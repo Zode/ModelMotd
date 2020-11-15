@@ -2,6 +2,11 @@
 requires [AFB](https://github.com/zode/afbase) to run.
 Adds a model motd (along with a song) that is only displayed upon first spawn, and then made invisible after doing anything.
 
+### CVARS:
+```
+modelmotd_enable - 0/1 disable/enable modelmotd
+```
+
 ## registers:
 ```
 #include "AFBaseExpansions/ModelMotd"
