@@ -30,12 +30,15 @@ class ModelMotd : AFBaseClass
 			ModelMotd::MotdData mdata;
 			mdata.hasSpawned = false;
 			mdata.isVisible = false;
-			mdata.oldView = "";
 			ModelMotd::data.insertLast(mdata);
 		}
 	
-		g_Game.PrecacheModel(ModelMotd::modelPath);
 		g_Game.PrecacheGeneric(ModelMotd::songPath);
+		
+		g_CustomEntityFuncs.RegisterCustomEntity( "ModelMotd::weapon_modelmotd", "weapon_modelmotd" );
+		g_ItemRegistry.RegisterWeapon( "weapon_modelmotd", "mm" );
+		g_Game.PrecacheOther("weapon_modelmotd");
+		g_Game.PrecacheGeneric("sprites/mm/weapon_modelmotd.txt");
 	}
 	
 	void PlayerDisconnectEvent(CBasePlayer@ pUser)
@@ -43,7 +46,6 @@ class ModelMotd : AFBaseClass
 		ModelMotd::MotdData mdata;
 		mdata.hasSpawned = false;
 		mdata.isVisible = false;
-		mdata.oldView = "";
 		ModelMotd::data[pUser.entindex()] = mdata;
 	}
 }
@@ -52,7 +54,6 @@ namespace ModelMotd
 {
 	class MotdData
 	{
-		string oldView = "";
 		bool hasSpawned = false;
 		bool isVisible = false;
 	}
@@ -86,17 +87,25 @@ namespace ModelMotd
 		MotdData@ mdata = data[pPlayer.entindex()-1];
 		if(mdata.hasSpawned) return HOOK_CONTINUE;
 		
-		mdata.oldView = pPlayer.pev.viewmodel;
 		mdata.hasSpawned = true;
 		mdata.isVisible = true;
 		data[pPlayer.entindex()-1] = mdata;
 		
-		pPlayer.m_iHideHUD = 1;
-		pPlayer.pev.viewmodel = modelPath;
-		
-		StuffCmd(pPlayer.edict(), "mp3 loop \""+songPath+"\"");
+		EHandle player = pPlayer;
+		g_Scheduler.SetTimeout("PostSpawn", 0.01f, player);
 		
 		return HOOK_CONTINUE;
+	}
+	
+	void PostSpawn(EHandle player)
+	{
+		if(!player) return;
+		CBasePlayer@ pPlayer = cast<CBasePlayer@>(cast<CBaseEntity@>(player));
+		pPlayer.m_iHideHUD = 0;
+		pPlayer.GiveNamedItem("weapon_modelmotd");
+		pPlayer.SelectItem("weapon_modelmotd");
+		
+		StuffCmd(pPlayer.edict(), "mp3 loop \""+songPath+"\"");
 	}
 	
 	HookReturnCode PlayerPreThink(CBasePlayer@ pPlayer, uint &out magicnumbers)
@@ -111,7 +120,8 @@ namespace ModelMotd
 		{
 			mdata.isVisible = false;
 			pPlayer.m_iHideHUD = 0;
-			pPlayer.pev.viewmodel = mdata.oldView;
+			CBasePlayerItem@ pItem = pPlayer.HasNamedPlayerItem("weapon_modelmotd");
+			if(pItem !is null) pPlayer.RemovePlayerItem(pItem);
 			
 			data[pPlayer.entindex()-1] = mdata;
 			//StuffCmd(pPlayer.edict(), "cd fadeout"); <- fades mp3 away but is blocked in stufftext
@@ -121,5 +131,67 @@ namespace ModelMotd
 		}
 		
 		return HOOK_CONTINUE;
+	}
+	
+	// weapon
+	class weapon_modelmotd : ScriptBasePlayerWeaponEntity
+	{
+		void Spawn()
+		{
+			self.Precache();
+			g_EntityFuncs.SetModel(self, self.GetW_Model("models/w_crowbar.mdl"));
+			self.m_iClip			= -1;
+			self.FallInit();
+		}
+		
+		void Precache()
+		{
+			self.PrecacheCustomModels();
+			g_Game.PrecacheModel(modelPath);
+			g_Game.PrecacheModel("models/w_crowbar.mdl");
+			g_Game.PrecacheModel("models/p_crowbar.mdl");
+		}
+		
+		bool GetItemInfo(ItemInfo& out info)
+		{
+			info.iMaxAmmo1		= -1;
+			info.iMaxAmmo2		= -1;
+			info.iMaxClip		= WEAPON_NOCLIP;
+			info.iSlot			= 0;
+			info.iPosition		= 0;
+			info.iFlags 		= 0;
+			info.iWeight		= 0;
+			return true;
+		}
+		
+		bool AddToPlayer(CBasePlayer@ pPlayer)
+		{
+			return BaseClass.AddToPlayer(pPlayer);
+		}
+		
+		bool Deploy()
+		{
+			return self.DefaultDeploy(self.GetV_Model(modelPath), self.GetP_Model("models/p_crowbar.mdl"), 0, "crowbar");
+		}
+		
+		void Holster(int skip = 0)
+		{
+			BaseClass.Holster(skip);
+		}
+		
+		CBasePlayerItem@ DropItem()
+		{
+			return null;
+		}
+		
+		void WeaponIdle()
+		{
+			return;
+		}
+		
+		void PrimaryAttack()
+		{
+			return;
+		}
 	}
 }
