@@ -18,6 +18,7 @@ class ModelMotd : AFBaseClass
 	{
 		g_Hooks.RegisterHook(Hooks::Player::PlayerSpawn, @ModelMotd::PlayerSpawn);
 		g_Hooks.RegisterHook(Hooks::Player::PlayerPreThink, @ModelMotd::PlayerPreThink);
+		@ModelMotd::cvarenabled = CCVar("modelmotd_enable", 1, "0/1 disable/enable modelmotd", ConCommandFlag::AdminOnly, @ModelMotd::cvarenabledCB);
 	}
 	
 	void MapInit()
@@ -59,6 +60,15 @@ namespace ModelMotd
 	const string modelPath = "models/mm/dance.mdl";
 	const string songPath = "sound/mm/bass.mp3";
 	array<MotdData> data;
+	CCVar@ cvarenabled;
+	
+	void cvarenabledCB(CCVar@ cvar, const string &in sOld, float fOld)
+	{
+		if(cvar.GetInt() < 0)
+			cvar.SetInt(0);
+		if(cvar.GetInt() > 1)
+			cvar.SetInt(1);
+	}
 	
 	void StuffCmd(edict_t@ edict, string cmd)
 	{
@@ -70,6 +80,8 @@ namespace ModelMotd
 	HookReturnCode PlayerSpawn(CBasePlayer@ pPlayer)
 	{
 		if(!modelmotd.Running) return HOOK_CONTINUE;
+		if(!AFBase::IsSafe()) return HOOK_CONTINUE;
+		if(cvarenabled.GetInt() == 0) return HOOK_CONTINUE;
 		
 		MotdData@ mdata = data[pPlayer.entindex()-1];
 		if(mdata.hasSpawned) return HOOK_CONTINUE;
@@ -79,8 +91,9 @@ namespace ModelMotd
 		mdata.isVisible = true;
 		data[pPlayer.entindex()-1] = mdata;
 		
-		pPlayer.pev.viewmodel = modelPath;
 		pPlayer.m_iHideHUD = 1;
+		pPlayer.RemoveAllItems(false); // hacky: remove all items to stop the dance from resetting
+		pPlayer.pev.viewmodel = modelPath;
 		
 		StuffCmd(pPlayer.edict(), "mp3 loop \""+songPath+"\"");
 		
@@ -90,6 +103,7 @@ namespace ModelMotd
 	HookReturnCode PlayerPreThink(CBasePlayer@ pPlayer, uint &out magicnumbers)
 	{
 		if(!AFBase::IsSafe()) return HOOK_CONTINUE;
+		if(cvarenabled.GetInt() == 0) return HOOK_CONTINUE;
 		
 		MotdData@ mdata = data[pPlayer.entindex()-1];
 		if(!mdata.isVisible) return HOOK_CONTINUE;
@@ -97,8 +111,10 @@ namespace ModelMotd
 		if(pPlayer.pev.button > 0)
 		{
 			mdata.isVisible = false;
-			pPlayer.pev.viewmodel = mdata.oldView;
 			pPlayer.m_iHideHUD = 0;
+			g_PlayerFuncs.ApplyMapCfgToPlayer(pPlayer, true); //hacky: apply map cfg if any.
+			pPlayer.pev.viewmodel = mdata.oldView;
+			
 			data[pPlayer.entindex()-1] = mdata;
 			//StuffCmd(pPlayer.edict(), "cd fadeout"); <- fades mp3 away but is blocked in stufftext
 			StuffCmd(pPlayer.edict(), "mp3 stop");
