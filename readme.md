@@ -15,4 +15,4 @@ ModelMotd_Call();
 
 ## modifying for your server:
 clone the .mdl file, and make any texture adjustments necessary.
-to change the model and/or song swap out the lines 59 & 60 in ModelMotd.as
+to change the model and/or song swap out the lines 61 & 62 in ModelMotd.as
