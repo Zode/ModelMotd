@@ -92,7 +92,6 @@ namespace ModelMotd
 		data[pPlayer.entindex()-1] = mdata;
 		
 		pPlayer.m_iHideHUD = 1;
-		pPlayer.RemoveAllItems(false); // hacky: remove all items to stop the dance from resetting
 		pPlayer.pev.viewmodel = modelPath;
 		
 		StuffCmd(pPlayer.edict(), "mp3 loop \""+songPath+"\"");
@@ -112,7 +111,6 @@ namespace ModelMotd
 		{
 			mdata.isVisible = false;
 			pPlayer.m_iHideHUD = 0;
-			g_PlayerFuncs.ApplyMapCfgToPlayer(pPlayer, true); //hacky: apply map cfg if any.
 			pPlayer.pev.viewmodel = mdata.oldView;
 			
 			data[pPlayer.entindex()-1] = mdata;
