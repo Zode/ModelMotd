@@ -18,6 +18,7 @@ class ModelMotd : AFBaseClass
 	{
 		g_Hooks.RegisterHook(Hooks::Player::PlayerSpawn, @ModelMotd::PlayerSpawn);
 		g_Hooks.RegisterHook(Hooks::Player::PlayerPreThink, @ModelMotd::PlayerPreThink);
+		g_Hooks.RegisterHook(Hooks::Player::PlayerKilled, @ModelMotd::PlayerKilled);
 		@ModelMotd::cvarenabled = CCVar("modelmotd_enable", 1, "0/1 disable/enable modelmotd", ConCommandFlag::AdminOnly, @ModelMotd::cvarenabledCB);
 	}
 	
@@ -133,6 +134,22 @@ namespace ModelMotd
 		return HOOK_CONTINUE;
 	}
 	
+	HookReturnCode PlayerKilled(CBasePlayer@ pPlayer, CBaseEntity@ pThing, int iNum)
+	{
+		if(cvarenabled.GetInt() == 0) return HOOK_CONTINUE;
+		
+		MotdData@ mdata = data[pPlayer.entindex()-1];
+		if(!mdata.isVisible) return HOOK_CONTINUE;
+		
+		mdata.isVisible = false;
+		data[pPlayer.entindex()-1] = mdata;
+		CBasePlayerItem@ pItem = pPlayer.HasNamedPlayerItem("weapon_modelmotd");
+		if(pItem !is null) pPlayer.RemovePlayerItem(pItem);
+		StuffCmd(pPlayer.edict(), "mp3 stop");
+	
+		return HOOK_CONTINUE;
+	}
+	
 	// weapon
 	class weapon_modelmotd : ScriptBasePlayerWeaponEntity
 	{
@@ -159,7 +176,7 @@ namespace ModelMotd
 			info.iMaxClip		= WEAPON_NOCLIP;
 			info.iSlot			= 0;
 			info.iPosition		= 0;
-			info.iFlags 		= 0;
+			info.iFlags 		= ITEM_FLAG_ESSENTIAL;
 			info.iWeight		= 0;
 			return true;
 		}
